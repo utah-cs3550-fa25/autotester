@@ -83,6 +83,7 @@ def usage():
 
 def main():
     hwname = sys.argv[1] if len(sys.argv) > 1 else "--help"
+    if hwname == "current": hwname = CURRENT
     try:
         if hwname == "--help":
             return usage()
@@ -98,7 +99,7 @@ def main():
             else:
                 print(f"Invalid part {part} of homework {hwname}; it only has {len(hw)} parts")
                 return 1
-    except OSError, AssertionError as e:
+    except (OSError, AssertionError) as e:
         name = type(e).__name__
         message = str(e)
         print(f"{name}: {message}")
