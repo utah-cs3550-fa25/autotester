@@ -21,7 +21,7 @@ def name(n):
 def start_server(timeout=TIMEOUT):
     start_time = time.time()
     server = subprocess.Popen(
-        ["python3", "manage.py", "runserver"],
+        ["python3", "manage.py", "runserver", "--noreload"],
         executable=sys.executable,
         stdin=None, stdout=sys.stdout, stderr=sys.stderr,
         encoding="latin1"
@@ -42,7 +42,7 @@ def start_server(timeout=TIMEOUT):
 def check_get(url):
     @name(f"Check that {url} exists")
     def f(timeout=TIMEOUT):
-        response = urllib.urlopen("http://localhost:8000" + url, data=None, timeout=timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
     return f
