@@ -68,7 +68,7 @@ def run(hw, part):
 def gh(hw):
     assert os.getenv("GITHUB_ENV"), "Cannot execute gh subcommand without GITHUB_ENV set"
     with open(os.getenv("GITHUB_ENV"), "a") as ghenv:
-        ghenv.write(f"HWPARTS={len(hw)}")
+        ghenv.write(f"HWPARTS={len(hw)}\n")
         for i in range(5):
             if i < len(hw):
                 name = getattr(hw[i], "phase_name", hw[i].__name__)
