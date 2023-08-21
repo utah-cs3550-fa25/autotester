@@ -5,6 +5,7 @@ import sys
 import time
 import urllib.request
 import os
+import socket
 
 TIMEOUT = 10 # seconds
 CURRENT = "hw1"
