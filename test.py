@@ -4,6 +4,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import os
 
 TIMEOUT = 10 # seconds
 CURRENT = "hw1"
