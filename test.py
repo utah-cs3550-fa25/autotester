@@ -75,7 +75,7 @@ def gh(hw):
             if i < len(hw):
                 name = getattr(hw[i], "phase_name", hw[i].__name__)
             else:
-                name = "[placeholder]"
+                name = f"No phase {i + 1} for this homework"
             ghenv.write(f"HWPART{i+1}={name}\n")
     print("Saved Github information in environment variables")
     return 0
