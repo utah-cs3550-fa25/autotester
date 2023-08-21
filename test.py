@@ -44,6 +44,7 @@ def check_get(url):
         response = urllib.urlopen("http://localhost:8000" + url, data=None, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
+    return f
 
 HW1 = [
     start_server,
@@ -73,7 +74,7 @@ def gh(hw):
                 name = getattr(hw[i], "phase_name", hw[i].__name__)
             else:
                 name = "[placeholder]"
-            ghenv.write(f"HWPART{i+1}={name}")
+            ghenv.write(f"HWPART{i+1}={name}\n")
     print("Saved Github information in environment variables")
     return 0
     
