@@ -6,6 +6,7 @@ import time
 import urllib.request
 import os
 import socket
+import html.parser
 
 TIMEOUT = 10 # seconds
 CURRENT = "hw1"
@@ -48,6 +49,38 @@ def check_get(url):
             f"Expected a successful response, got {response.status} {response.reason}"
     return f
 
+class HTMLFindElement(html.parser.HTMLParser):
+    def __init__(self, tagname):
+        html.parser.HTMLParser.__init__(self)
+        self.found = []
+        self.tagname = tagname
+
+    def handle_starttag(self, tag, attrs):
+        if tag == self.tagname:
+            html_attrs = "".join(f" {k}='{v}'" for k, v in attrs.items())
+            print(f"Found <{tag}{html_attrs}>")
+            self.found.append(attrs)
+
+def check_has_css(url, css):
+    @name(f"Check that {url} links to {css}")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        parser = HTMLFindElement("link")
+        parser.feed(response)
+        for link in parser.found:
+            if "rel" in link and link["rel"] == "stylesheet":
+                if link["href"] == css:
+                    assert "title" not in link, "<link> element should not have title attribute"
+                    assert "media" not in link, "<link> element should not have media attribute"
+                    if "type" in link: assert link["type"] == "text/css", "Stylesheets should have type=text/css"
+        else:
+            raise ValueError(f"Could not find a <link> element with href={css}")
+    return f
+
+
 HW1 = [
     start_server,
     check_get("/static/test.html"),
@@ -58,8 +91,19 @@ HW1 = [
     check_get("/static/login.html"),
 ]
 
+HW2 = [
+    start_server,
+    check_get("/static/main.css"),
+    check_has_css("/static/index.html", "/static/main.css"),
+    check_has_css("/static/assignment.html", "/static/main.css"),
+    check_has_css("/static/submissions.html", "/static/main.css"),
+    check_has_css("/static/profile.html", "/static/main.css"),
+    check_has_css("/static/login.html", "/static/main.css"),
+]
+
 HWS = {
-    "hw1": HW1
+    "hw1": HW1,
+    "hw2": HW2,
 }
 
 def run(hw, part):
@@ -103,6 +147,9 @@ def main():
             else:
                 print(f"Invalid part {part} of homework {hwname}; it only has {len(hw)} parts")
                 return 1
+        else:
+            print(f"Invalid homework {hwname}; valid options are", " ".join(HWS))
+            return 1
     except (OSError, AssertionError) as e:
         name = type(e).__name__
         message = str(e)
