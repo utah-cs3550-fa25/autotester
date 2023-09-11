@@ -9,7 +9,7 @@ import socket
 import html.parser
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw1"
+CURRENT = "hw2"
 SERVER = None
 
 def name(n):
