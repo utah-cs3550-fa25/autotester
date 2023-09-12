@@ -71,12 +71,12 @@ def check_has_css(url, css):
         parser = HTMLFindElement("link")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         for link in parser.found:
-            print(link)
             if "rel" in link and link["rel"] == "stylesheet":
                 if link["href"] == css:
                     assert "title" not in link, "<link> element should not have title attribute"
                     assert "media" not in link, "<link> element should not have media attribute"
                     if "type" in link: assert link["type"] == "text/css", "Stylesheets should have type=text/css"
+                    return
         else:
             raise ValueError(f"Could not find a <link> element with href={css}")
     return f
