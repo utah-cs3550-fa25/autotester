@@ -69,7 +69,7 @@ def check_has_css(url, css):
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
         parser = HTMLFindElement("link")
-        parser.feed(response)
+        parser.feed(response.read())
         for link in parser.found:
             if "rel" in link and link["rel"] == "stylesheet":
                 if link["href"] == css:
