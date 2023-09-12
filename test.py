@@ -59,7 +59,7 @@ class HTMLFindElement(html.parser.HTMLParser):
         if tag == self.tagname:
             html_attrs = "".join(f" {k}='{v}'" for k, v in attrs)
             print(f"Found <{tag}{html_attrs}>")
-            self.found.append(attrs)
+            self.found.append(dict(attrs))
 
 def check_has_css(url, css):
     @name(f"Check that {url} links to {css}")
@@ -71,6 +71,7 @@ def check_has_css(url, css):
         parser = HTMLFindElement("link")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         for link in parser.found:
+            print(link)
             if "rel" in link and link["rel"] == "stylesheet":
                 if link["href"] == css:
                     assert "title" not in link, "<link> element should not have title attribute"
