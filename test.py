@@ -57,7 +57,7 @@ class HTMLFindElement(html.parser.HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if tag == self.tagname:
-            html_attrs = "".join(f" {k}='{v}'" for k, v in attrs.items())
+            html_attrs = "".join(f" {k}='{v}'" for k, v in attrs)
             print(f"Found <{tag}{html_attrs}>")
             self.found.append(attrs)
 
