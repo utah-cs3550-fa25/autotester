@@ -9,7 +9,7 @@ import socket
 import html.parser
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw2"
+CURRENT = "hw3"
 SERVER = None
 
 def name(n):
@@ -102,9 +102,19 @@ HW2 = [
     check_has_css("/static/login.html", "/static/main.css"),
 ]
 
+HW1 = [
+    start_server,
+    check_get("/"),
+    check_get("/1/"),
+    check_get("/1/submissions"),
+    check_get("/profile"),
+    check_get("/profile/login"),
+]
+
 HWS = {
     "hw1": HW1,
     "hw2": HW2,
+    "hw3": HW3,
 }
 
 def run(hw, part):
