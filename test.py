@@ -102,7 +102,7 @@ HW2 = [
     check_has_css("/static/login.html", "/static/main.css"),
 ]
 
-HW1 = [
+HW3 = [
     start_server,
     check_get("/"),
     check_get("/1/"),
