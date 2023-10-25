@@ -12,14 +12,33 @@ TIMEOUT = 10 # seconds
 CURRENT = "hw3"
 SERVER = None
 
+
 def name(n):
     def decorator(f):
         f.phase_name = n
         return f
     return decorator
 
+def download_file(url, path):
+    resp = urllib.request.urlopen(url)
+    with open(path, "wb") as out:
+        while True:
+            s = resp.read1()
+            if not s: break
+            out.write(s)
+
+def prerun(hw):
+    if hw not in [HW1, HW2]:
+        download_file("https://raw.githubusercontent.com/Utah-CS3550-Fall-2023/assignments/main/resources/makedata.py", "makedata.py")
+        assert os.path.exists("makedata.py")
+        if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
+        subprocess.run(["python3", "manage.py", "migrate"],
+                       check=True, executable=sys.executable, timeout=TIMEOUT)
+        subprocess.run(["python3", "makedata.py"],
+                       check=True, executable=sys.executable, timeout=TIMEOUT)
+
 @name("Server starts up")
-def start_server(timeout=TIMEOUT):
+def start_server(timeout=TIMEOUT, run="makedata.py"):
     start_time = time.time()
     server = subprocess.Popen(
         ["python3", "manage.py", "runserver", "--noreload"],
@@ -118,6 +137,7 @@ HWS = {
 }
 
 def run(hw, part):
+    prerun(hw)
     assert part < len(hw), f"Homework does not have a part {i + 1}"
     hw[part]()
     return 0
