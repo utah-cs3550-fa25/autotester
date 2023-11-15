@@ -112,7 +112,7 @@ def check_has_form(url, method, action):
         parser = HTMLFindElement("form")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         for form in parser.found:
-            if "method" in form and form["method"] == method:
+            if "method" in form and form["method"].casefold() == method.casefold():
                 print(f"Form has method={method}, as expected")
             elif "method" not in form:
                 print(f"ERROR: Form does not have method attribute")
@@ -120,7 +120,7 @@ def check_has_form(url, method, action):
             else:
                 print(f'ERROR: Form has method=\"{form["method"]}\", not method=method')
                 continue
-            if "action" in form and form["action"] == action:
+            if "action" in form and form["action"].rstrip("/") == action.rstrip("/"):
                 print(f"Form has action={action}, as expected")
             elif "action" not in form:
                 print(f"ERROR: Form does not have action attribute")
@@ -259,14 +259,14 @@ HW3 = [
 
 HW5 = [
     start_server,
-    check_has_form("/profile/login", "post", "/profile/login"),
-    check_login("/profile/login", "pavpan", "pavpan"),
-    check_login("/profile/login", "ta2", "ta2"),
-    check_login("/profile/login", "s1", "s1"),
-    check_not_login("/profile/login", "s1", "s2"),
-    check_get_logged_in("/profile/login", "s1", "s1", "/profile"),
-    check_get_logged_in("/profile/login", "ta2", "ta2", "/profile"),
-    check_logout("/profile/login", "s1", "s1", "/profile/logout"),
+    check_has_form("/profile/login/", "post", "/profile/login/"),
+    check_login("/profile/login/", "pavpan", "pavpan"),
+    check_login("/profile/login/", "ta2", "ta2"),
+    check_login("/profile/login/", "s1", "s1"),
+    check_not_login("/profile/login/", "s1", "s2"),
+    check_get_logged_in("/profile/login/", "s1", "s1", "/profile/"),
+    check_get_logged_in("/profile/login/", "ta2", "ta2", "/profile/"),
+    check_logout("/profile/login/", "s1", "s1", "/profile/logout/"),
 ]
 
 HWS = {
