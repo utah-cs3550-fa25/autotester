@@ -3,15 +3,17 @@
 import subprocess
 import sys
 import time
-import urllib.request
+import urllib.request, urllib.parse
 import os
 import socket
 import html.parser
+import http.cookiejar
 
 TIMEOUT = 10 # seconds
 CURRENT = "hw3"
 SERVER = None
-
+SESSIONID = None
+COOKIE_JAR = http.cookiejar.CookieJar()
 
 def name(n):
     def decorator(f):
@@ -100,6 +102,131 @@ def check_has_css(url, css):
             raise ValueError(f"Could not find a <link> element with href={css}")
     return f
 
+def check_has_form(url, method, action):
+    @name(f"Check that {url} has a form pointing to {action}")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        parser = HTMLFindElement("form")
+        parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
+        for form in parser.found:
+            if "method" in form and form["method"] == method:
+                print(f"Form has method={method}, as expected")
+            elif "method" not in form:
+                print(f"ERROR: Form does not have method attribute")
+                continue
+            else:
+                print(f'ERROR: Form has method=\"{form["method"]}\", not method=method')
+                continue
+            if "action" in form and form["action"] == action:
+                print(f"Form has action={action}, as expected")
+            elif "action" not in form:
+                print(f"ERROR: Form does not have action attribute")
+                continue
+            else:
+                print(f'ERROR: Form has action=\"{form["action"]}\", not action=action')
+                continue
+            break
+        else:
+            raise ValueError(f"Could not find <form method={method} action={action}> element")
+    return f
+
+def check_login(url, user, pwd):
+    @name(f"Log in to {url} as {user}:{pwd}")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        parser = HTMLFindElement("input")
+        parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
+        csrf_token = None
+        username_name = None
+        password_name = None
+        other_fields = []
+        for iput in parser.found:
+            if "name" not in iput: continue
+            if iput["name"] == "csrfmiddlewaretoken":
+                assert "value" in iput, "No CSRF token provided, please seek help"
+                csrf_token = iput["value"]
+            elif "type" in iput and iput["type"] == "password":
+                password_name = iput["name"]
+            elif not username_name:
+                username_name = iput["name"]
+            else:
+                if "name" not in iput or "value" not in iput: continue
+                other_fields.append((iput["name"], iput["value"]))
+        if not csrf_token:
+            raise ValueError(f"Count not find csrf token on {url}")
+        if not username_name:
+            raise ValueError(f"Count not find username input field on {url}")
+        if not password_name:
+            raise ValueError(f"Count not find password input field on {url}; make sure to use type=password")
+        print(f"Found <input name={username_name}> for username and <input name={password_name}> for password")
+        data = urllib.parse.urlencode({
+            "csrfmiddlewaretoken": csrf_token,
+            username_name: user,
+            password_name: pwd,
+        } | dict(other_fields)).encode("utf8")
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
+        login_response = opener.open("http://localhost:8000" + url, data, timeout=timeout)
+        assert 200 <= login_response.status < 300, \
+            f"Expected a redirect from a successful login, got {login_response.status} {login_response.reason}"
+        for cookie in COOKIE_JAR:
+            if cookie.name == "sessionid":
+                global SESSIONID
+                SESSIONID = cookie.value
+                print(f"Received a session cookie, {SESSIONID}")
+                break
+            else:
+                print(f"Skipping uninteresting cookie for {cookie.name}")
+        else:
+            raise ValueError("Did not receive a session cookie!")
+    return f
+
+def check_not_login(url, uname, pwd):
+    @name(f"Log in to {url} as {uname}:{pwd} should fail")
+    def f(timeout=TIMEOUT):
+        try:
+            check_login(url, uname, pwd)(timeout)
+        except ValueError as e:
+            print(f"Ran into expected issue: {e}")
+        else:
+            print("Login succeeded; that's bad, it should fail!")
+    return f
+
+def check_get_logged_in(url, uname, pwd, url2):
+    @name(f"Check {url2} after logging in as {uname}:{pwd}")
+    def f(timeout=TIMEOUT):
+        check_login(url, uname, pwd)(timeout)
+        assert SESSIONID, "Could not find a session id, please report this immediately"
+        request = urllib.request.Request("http://localhost:8000" + url2)
+        request.add_header("Cookie", f"sessionid={SESSIONID}")
+        response = urllib.request.urlopen(request)
+        assert uname in response.read().decode("latin1"), \
+            f"Could not find {uname} on {url2} after logging in as {uname}:{pwd}"
+        print(f"Found {uname} in {url2}")
+    return f
+
+
+def check_logout(url, uname, pwd, url2):
+    @name(f"Check {url2} after logging in as {uname}:{pwd}")
+    def f(timeout=TIMEOUT):
+        check_login(url, uname, pwd)(timeout)
+        assert SESSIONID, "Could not find a session id, please report this immediately"
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
+        response = opener.open("http://localhost:8000" + url2, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful logout, got {login_response.status} {login_response.reason}"
+        for cookie in COOKIE_JAR:
+            if cookie.name == "sessionid":
+                assert cookie.value in ["", '""'], "Got a new sessionid cookie instead of clearing the existing one"
+        print("Sessionid cookie gone, successful logout")
+    return f
+
+
 
 HW1 = [
     start_server,
@@ -130,10 +257,23 @@ HW3 = [
     check_get("/profile/login"),
 ]
 
+HW5 = [
+    start_server,
+    check_has_form("/profile/login", "post", "/profile/login"),
+    check_login("/profile/login", "pavpan", "pavpan"),
+    check_login("/profile/login", "ta2", "ta2"),
+    check_login("/profile/login", "s1", "s1"),
+    check_not_login("/profile/login", "s1", "s2"),
+    check_get_logged_in("/profile/login", "s1", "s1", "/profile"),
+    check_get_logged_in("/profile/login", "ta2", "ta2", "/profile"),
+    check_logout("/profile/login", "s1", "s1", "/profile/logout"),
+]
+
 HWS = {
     "hw1": HW1,
     "hw2": HW2,
     "hw3": HW3,
+    "hw5": HW5,
 }
 
 def run(hw, part):
