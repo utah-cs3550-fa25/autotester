@@ -14,6 +14,7 @@ CURRENT = "hw5"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
+OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
 
 def name(n):
     def decorator(f):
@@ -137,7 +138,7 @@ def check_login(url, user, pwd):
     @name(f"Log in to {url} as {user}:{pwd}")
     def f(timeout=TIMEOUT):
         start_server(timeout)
-        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
         parser = HTMLFindElement("input")
@@ -164,14 +165,15 @@ def check_login(url, user, pwd):
             raise ValueError(f"Count not find username input field on {url}")
         if not password_name:
             raise ValueError(f"Count not find password input field on {url}; make sure to use type=password")
-        print(f"Found <input name={username_name}> for username and <input name={password_name}> for password")
+        print(f"Found CSRF token value {csrf_token}")
+        print(f"Found <input name={username_name}> for username")
+        print(f"Found <input name={password_name}> for password")
         data = urllib.parse.urlencode({
             "csrfmiddlewaretoken": csrf_token,
             username_name: user,
             password_name: pwd,
         } | dict(other_fields)).encode("utf8")
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
-        login_response = opener.open("http://localhost:8000" + url, data, timeout=timeout)
+        login_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
         assert 200 <= login_response.status < 300, \
             f"Expected a redirect from a successful login, got {login_response.status} {login_response.reason}"
         for cookie in COOKIE_JAR:
@@ -202,9 +204,7 @@ def check_get_logged_in(url, uname, pwd, url2):
     def f(timeout=TIMEOUT):
         check_login(url, uname, pwd)(timeout)
         assert SESSIONID, "Could not find a session id, please report this immediately"
-        request = urllib.request.Request("http://localhost:8000" + url2)
-        request.add_header("Cookie", f"sessionid={SESSIONID}")
-        response = urllib.request.urlopen(request)
+        response = OPENER.open("http://localhost:8000" + url2)
         assert uname in response.read().decode("latin1"), \
             f"Could not find {uname} on {url2} after logging in as {uname}:{pwd}"
         print(f"Found {uname} in {url2}")
@@ -216,8 +216,7 @@ def check_logout(url, uname, pwd, url2):
     def f(timeout=TIMEOUT):
         check_login(url, uname, pwd)(timeout)
         assert SESSIONID, "Could not find a session id, please report this immediately"
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
-        response = opener.open("http://localhost:8000" + url2, timeout=timeout)
+        response = OPENER.open("http://localhost:8000" + url2, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful logout, got {login_response.status} {login_response.reason}"
         for cookie in COOKIE_JAR:
