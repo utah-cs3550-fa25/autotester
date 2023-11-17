@@ -143,33 +143,29 @@ def check_login(url, user, pwd):
             f"Expected a successful response, got {response.status} {response.reason}"
         parser = HTMLFindElement("input")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
-        csrf_token = None
         username_name = None
         password_name = None
         other_fields = []
         for iput in parser.found:
             if "name" not in iput: continue
-            if iput["name"] == "csrfmiddlewaretoken":
-                assert "value" in iput, "No CSRF token provided, please seek help"
-                csrf_token = iput["value"]
+            if "type" in iput and iput["type"].casefold() == "hidden":
+                if "name" not in iput or "value" not in iput: continue
+
+                print("Saving hidden input", iput["name"], "of", iput["value"])
+                other_fields.append((iput["name"], iput["value"]))
             elif "type" in iput and iput["type"] == "password":
                 password_name = iput["name"]
             elif not username_name:
                 username_name = iput["name"]
             else:
-                if "name" not in iput or "value" not in iput: continue
-                other_fields.append((iput["name"], iput["value"]))
-        if not csrf_token:
-            raise ValueError(f"Count not find csrf token on {url}")
+                print("Confused by extra input element", iput)
         if not username_name:
             raise ValueError(f"Count not find username input field on {url}")
         if not password_name:
             raise ValueError(f"Count not find password input field on {url}; make sure to use type=password")
-        print(f"Found CSRF token value {csrf_token}")
         print(f"Found <input name={username_name}> for username")
         print(f"Found <input name={password_name}> for password")
         data = urllib.parse.urlencode({
-            "csrfmiddlewaretoken": csrf_token,
             username_name: user,
             password_name: pwd,
         } | dict(other_fields)).encode("utf8")
