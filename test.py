@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw5"
+CURRENT = "hw6"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -101,6 +101,26 @@ def check_has_css(url, css):
                     return
         else:
             raise ValueError(f"Could not find a <link> element with href={css}")
+    return f
+
+def check_has_js(url, js):
+    @name(f"Check that {url} links to {js}")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        parser = HTMLFindElement("script")
+        parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
+        for script in parser.found:
+            if script["src"] == js:
+                assert "type" in script, "<script> element should have type"
+                assert script["type"] == "module", "<script> element should use type=module"
+                assert "async" not in script, "<script> should not use async"
+                assert "defer" not in script, "<script> should not use defer, that's implied for modules"
+                return
+        else:
+            raise ValueError(f"Could not find a <script> element with src={js}")
     return f
 
 def check_has_form(url, method, action):
@@ -221,6 +241,17 @@ def check_logout(url, uname, pwd, url2):
         print("Sessionid cookie gone, successful logout")
     return f
 
+def check_contains(url, s):
+    @name(f"Check that {url} contains the string {s!r}")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        assert s in response.read().decode('latin1'), \
+            f"Count not find {s!r} in {url}"
+    return f
+
 
 
 HW1 = [
@@ -264,11 +295,20 @@ HW5 = [
     check_logout("/profile/login/", "s1", "s1", "/profile/logout/"),
 ]
 
+HW6 = [
+    start_server,
+    check_get("/static/main.js"),
+    check_contains("/static/main.js", "function say_hi"),
+    check_contains("/static/main.js", "import { $ } from \"static/jquery/src/jquery.js\""),
+    check_has_js("/profile/login/", "/static/main.js"),
+]
+
 HWS = {
     "hw1": HW1,
     "hw2": HW2,
     "hw3": HW3,
     "hw5": HW5,
+    "hw6": HW6,
 }
 
 def run(hw, part):
