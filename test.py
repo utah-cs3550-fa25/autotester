@@ -299,7 +299,7 @@ HW6 = [
     start_server,
     check_get("/static/main.js"),
     check_contains("/static/main.js", "function say_hi"),
-    check_contains("/static/main.js", "import { $ } from \"static/jquery/src/jquery.js\""),
+    check_contains("/static/main.js", "import { $ } from \"/static/jquery/src/jquery.js\";"),
     check_has_js("/profile/login/", "/static/main.js"),
 ]
 
