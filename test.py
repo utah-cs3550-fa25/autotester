@@ -113,7 +113,7 @@ def check_has_js(url, js):
         parser = HTMLFindElement("script")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         for script in parser.found:
-            if script["src"] == js:
+            if "src" in script and script["src"] == js:
                 assert "type" in script, "<script> element should have type"
                 assert script["type"] == "module", "<script> element should use type=module"
                 assert "async" not in script, "<script> should not use async"
