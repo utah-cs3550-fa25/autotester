@@ -258,7 +258,7 @@ HW1 = [
     start_server,
     check_get("/static/test.html"),
     check_get("/static/index.html"),
-    check_get("/static/assignments.html"),
+    check_get("/static/assignment.html"),
     check_get("/static/submissions.html"),
     check_get("/static/profile.html"),
     check_get("/static/login.html"),
