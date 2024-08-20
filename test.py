@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw6"
+CURRENT = "hw1"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
