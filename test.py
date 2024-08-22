@@ -31,7 +31,7 @@ def download_file(url, path):
             out.write(s)
 
 def prerun(hw):
-    if hw not in [HW1, HW2]:
+    if hw not in [HW1a, HW1, HW2]:
         download_file("https://raw.githubusercontent.com/Utah-CS3550-Fall-2023/assignments/main/resources/makedata.py", "makedata.py")
         assert os.path.exists("makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
