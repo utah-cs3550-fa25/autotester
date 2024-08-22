@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw1"
+CURRENT = "hw1a"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -254,9 +254,12 @@ def check_contains(url, s):
 
 
 
-HW1 = [
+HW1a = [
     start_server,
     check_get("/static/test.html"),
+]
+
+HW1 = HW1a + [
     check_get("/static/index.html"),
     check_get("/static/assignment.html"),
     check_get("/static/submissions.html"),
@@ -304,6 +307,7 @@ HW6 = [
 ]
 
 HWS = {
+    "hw1a": HW1a,
     "hw1": HW1,
     "hw2": HW2,
     "hw3": HW3,
