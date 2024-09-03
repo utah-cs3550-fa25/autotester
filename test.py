@@ -299,7 +299,6 @@ HW6 = [
 ]
 
 HWS = {
-    "hw1a": HW1a,
     "hw1": HW1,
     "hw2": HW2,
     "hw3": HW3,
