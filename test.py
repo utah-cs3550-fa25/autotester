@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw1a"
+CURRENT = "hw2"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -31,7 +31,7 @@ def download_file(url, path):
             out.write(s)
 
 def prerun(hw):
-    if hw not in [HW1a, HW1, HW2]:
+    if hw not in [HW1, HW2]:
         download_file("https://raw.githubusercontent.com/Utah-CS3550-Fall-2023/assignments/main/resources/makedata.py", "makedata.py")
         assert os.path.exists("makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
@@ -254,17 +254,9 @@ def check_contains(url, s):
 
 
 
-HW1a = [
+HW1 = [
     start_server,
     check_get("/static/test.html"),
-]
-
-HW1 = HW1a + [
-    check_get("/static/index.html"),
-    check_get("/static/assignment.html"),
-    check_get("/static/submissions.html"),
-    check_get("/static/profile.html"),
-    check_get("/static/login.html"),
 ]
 
 HW2 = [
