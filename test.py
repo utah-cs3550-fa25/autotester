@@ -263,7 +263,7 @@ HW2 = [
     start_server,
     check_get("/static/main.css"),
     check_has_css("/static/index.html", "/static/main.css"),
-    check_has_css("/static/assignments.html", "/static/main.css"),
+    check_has_css("/static/assignment.html", "/static/main.css"),
     check_has_css("/static/submissions.html", "/static/main.css"),
     check_has_css("/static/profile.html", "/static/main.css"),
     check_has_css("/static/login.html", "/static/main.css"),
