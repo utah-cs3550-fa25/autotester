@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw3"
+CURRENT = "hw3a"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -31,8 +31,8 @@ def download_file(url, path):
             out.write(s)
 
 def prerun(hw):
-    if hw not in [HW1, HW2]:
-        download_file("https://raw.githubusercontent.com/Utah-CS3550-Fall-2023/assignments/main/resources/makedata.py", "makedata.py")
+    if hw not in [HW1, HW2, HW3a]:
+        download_file("https://raw.githubusercontent.com/utah-cs3550-fa24/assignments/main/resources/makedata.py", "makedata.py")
         assert os.path.exists("makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
         subprocess.run(["python3", "manage.py", "migrate"],
@@ -41,7 +41,7 @@ def prerun(hw):
                        check=True, executable=sys.executable, timeout=TIMEOUT)
 
 @name("Server starts up")
-def start_server(timeout=TIMEOUT, run="makedata.py"):
+def start_server(timeout=TIMEOUT):
     start_time = time.time()
     server = subprocess.Popen(
         ["python3", "manage.py", "runserver", "--noreload"],
@@ -269,6 +269,15 @@ HW2 = [
     check_has_css("/static/login.html", "/static/main.css"),
 ]
 
+HW3a = [
+    start_server,
+    check_get("/"),
+    check_get("/1/"),
+    check_get("/1/submissions"),
+    check_get("/profile"),
+    check_get("/profile/login"),
+]
+
 HW3 = [
     start_server,
     check_get("/"),
@@ -301,6 +310,7 @@ HW6 = [
 HWS = {
     "hw1": HW1,
     "hw2": HW2,
+    "hw3a": HW3a,
     "hw3": HW3,
     "hw5": HW5,
     "hw6": HW6,
