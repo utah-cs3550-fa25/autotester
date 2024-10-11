@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw3"
+CURRENT = "hw4"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -154,6 +154,51 @@ def check_has_form(url, method, action):
             raise ValueError(f"Could not find <form method={method} action={action}> element")
     return f
 
+def check_submit_redirect(url, fields, next_url):
+    @name(f"Submitting form at {url} with {fields} should redirect to {next_url}")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        parser = HTMLFindElement("input")
+        parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
+        done_fields = []
+        filled_fields = []
+        for iput in parser.found:
+            if "name" not in iput: continue
+            if iput["name"].casefold() in fields:
+                print("Found input field", iput["name"])
+                done_fields.append(iput["name"].casefold())
+                filled_fields.append((iput["name"].casefold(), fields[iput["name"].casefold()]))
+            elif "type" in iput and iput["type"].casefold() == "hidden":
+                if "name" not in iput or "value" not in iput: continue
+                print("Saving hidden input", iput["name"], "of", iput["value"])
+                other_fields.append((iput["name"], iput["value"]))
+            else:
+                print("Confused by extra input element", iput, "skipping")
+        if set(done_fields) < set(fields):
+            remaining_fields = set(fields) - set(done_fields)
+            raise ValueError(f"Could not find input field for {', '.join(remaining_fields)}")
+        data = urllib.parse.urlencode(dict(filled_fields)).encode("utf8")
+        form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
+        assert 300 <= form_response.status < 400, \
+            f"Expected a redirect, got {login_response.status} {login_response.reason}"
+        location = form_response.get_header("location")
+        assert location == next_url, \
+            f"Expected a redirect to {next_url}, got redirect to {location}"
+        for cookie in COOKIE_JAR:
+            if cookie.name == "sessionid":
+                global SESSIONID
+                SESSIONID = cookie.value
+                print(f"Received a session cookie, {SESSIONID}")
+                break
+            else:
+                print(f"Skipping uninteresting cookie for {cookie.name}")
+        else:
+            raise ValueError("Did not receive a session cookie!")
+    return f
+
 def check_login(url, user, pwd):
     @name(f"Log in to {url} as {user}:{pwd}")
     def f(timeout=TIMEOUT):
@@ -287,6 +332,12 @@ HW3 = [
     check_get("/profile/login"),
 ]
 
+HW4 = [
+    start_server,
+    check_has_form("/1/submissions", "post", "/1/submissions"),
+    check_submit_redirect("/1/submissions", { "grade-1": "0.0" }, "/1/submissions")
+]
+
 HW5 = [
     start_server,
     check_has_form("/profile/login/", "post", "/profile/login/"),
@@ -312,6 +363,7 @@ HWS = {
     "hw2": HW2,
     "hw3a": HW3a,
     "hw3": HW3,
+    "hw4": HW4,
     "hw5": HW5,
     "hw6": HW6,
 }
