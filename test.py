@@ -168,15 +168,15 @@ def check_submit_redirect(url, fields, next_url):
             if "name" not in iput: continue
             if iput["name"].casefold() in fields:
                 print("Found input field", iput["name"])
-                filled_fields.append((iput["name"].casefold(), fields[iput["name"].casefold()]))
+                filled_fields[iput["name"].casefold()] = fields[iput["name"].casefold()]
             elif "type" in iput and iput["type"].casefold() == "hidden":
                 if "name" not in iput or "value" not in iput: continue
                 print("Saving hidden input", iput["name"], "of", iput["value"])
-                filled_fields.append((iput["name"].casefold(), iput["value"]))
+                filled_fields[iput["name"]] = iput["value"]
             else:
                 print("Confused by extra input element", iput, "skipping")
-        if set(dict(filled_fields)) < set(fields):
-            remaining_fields = set(fields) - set(dict(filled_fields))
+        if set(filled_fields) < set(fields):
+            remaining_fields = set(fields) - set(filled_fields)
             raise ValueError(f"Could not find input field for {', '.join(remaining_fields)}")
         data = urllib.parse.urlencode(dict(filled_fields)).encode("utf8")
         form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
