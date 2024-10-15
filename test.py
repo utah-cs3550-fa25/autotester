@@ -163,22 +163,20 @@ def check_submit_redirect(url, fields, next_url):
             f"Expected a successful response, got {response.status} {response.reason}"
         parser = HTMLFindElement("input")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
-        done_fields = []
-        filled_fields = []
+        filled_fields = {}
         for iput in parser.found:
             if "name" not in iput: continue
             if iput["name"].casefold() in fields:
                 print("Found input field", iput["name"])
-                done_fields.append(iput["name"].casefold())
                 filled_fields.append((iput["name"].casefold(), fields[iput["name"].casefold()]))
             elif "type" in iput and iput["type"].casefold() == "hidden":
                 if "name" not in iput or "value" not in iput: continue
                 print("Saving hidden input", iput["name"], "of", iput["value"])
-                other_fields.append((iput["name"], iput["value"]))
+                filled_fields.append((iput["name"].casefold(), iput["value"]))
             else:
                 print("Confused by extra input element", iput, "skipping")
-        if set(done_fields) < set(fields):
-            remaining_fields = set(fields) - set(done_fields)
+        if set(dict(filled_fields)) < set(fields):
+            remaining_fields = set(fields) - set(dict(filled_fields))
             raise ValueError(f"Could not find input field for {', '.join(remaining_fields)}")
         data = urllib.parse.urlencode(dict(filled_fields)).encode("utf8")
         form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
