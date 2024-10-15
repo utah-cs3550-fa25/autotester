@@ -181,7 +181,7 @@ def check_submit_redirect(url, fields, next_url):
         data = urllib.parse.urlencode(dict(filled_fields)).encode("utf8")
         form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
         assert 300 <= form_response.status < 400, \
-            f"Expected a redirect, got {login_response.status} {login_response.reason}"
+            f"Expected a redirect, got {form_response.status} {form_response.reason}"
         location = form_response.get_header("location")
         assert location == next_url, \
             f"Expected a redirect to {next_url}, got redirect to {location}"
