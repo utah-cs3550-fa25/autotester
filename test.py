@@ -14,7 +14,14 @@ CURRENT = "hw4"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
-OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
+OPENER = urllib.request.build_opener(
+    HTTPNoRedirectHandler(),
+    urllib.request.HTTPCookieProcessor(COOKIE_JAR)
+)
+
+class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(req, fp, code, msg, hdrs, newurl):
+        return None
 
 def name(n):
     def decorator(f):
