@@ -10,7 +10,7 @@ import html.parser
 import http.cookiejar
 
 class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(req, fp, code, msg, hdrs, newurl):
+    def redirect_request(self, req, fp, code, msg, hdrs, newurl):
         return None
 
 TIMEOUT = 10 # seconds
