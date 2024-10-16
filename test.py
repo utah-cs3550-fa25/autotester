@@ -9,6 +9,10 @@ import socket
 import html.parser
 import http.cookiejar
 
+class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(req, fp, code, msg, hdrs, newurl):
+        return None
+
 TIMEOUT = 10 # seconds
 CURRENT = "hw4"
 SERVER = None
@@ -18,10 +22,6 @@ OPENER = urllib.request.build_opener(
     HTTPNoRedirectHandler(),
     urllib.request.HTTPCookieProcessor(COOKIE_JAR)
 )
-
-class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(req, fp, code, msg, hdrs, newurl):
-        return None
 
 def name(n):
     def decorator(f):
