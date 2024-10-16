@@ -186,10 +186,15 @@ def check_submit_redirect(url, fields, next_url):
             remaining_fields = set(fields) - set(filled_fields)
             raise ValueError(f"Could not find input field for {', '.join(remaining_fields)}")
         data = urllib.parse.urlencode(dict(filled_fields)).encode("utf8")
-        form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
-        assert 300 <= form_response.status < 400, \
-            f"Expected a redirect, got {form_response.status} {form_response.reason}"
-        location = form_response.get_header("location")
+        try:
+            form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
+        except HTTPError as e:
+            assert 300 <= e.code < 400, \
+                f"Expected a redirect, got {e.code} {e.reason}"
+            location = e.headers["Location"]
+        else:
+            assert False, \
+                f"Expected a redirect, got {form_response.status} {form_response.reason}"
         assert location == next_url, \
             f"Expected a redirect to {next_url}, got redirect to {location}"
         for cookie in COOKIE_JAR:
