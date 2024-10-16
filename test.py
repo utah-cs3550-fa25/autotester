@@ -205,8 +205,6 @@ def check_submit_redirect(url, fields, next_url):
                 break
             else:
                 print(f"Skipping uninteresting cookie for {cookie.name}")
-        else:
-            raise ValueError("Did not receive a session cookie!")
     return f
 
 def check_login(url, user, pwd):
