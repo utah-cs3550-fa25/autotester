@@ -3,7 +3,7 @@
 import subprocess
 import sys
 import time
-import urllib.request, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 import os
 import socket
 import html.parser
@@ -188,7 +188,7 @@ def check_submit_redirect(url, fields, next_url):
         data = urllib.parse.urlencode(dict(filled_fields)).encode("utf8")
         try:
             form_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
-        except HTTPError as e:
+        except urllib.error.HTTPError as e:
             assert 300 <= e.code < 400, \
                 f"Expected a redirect, got {e.code} {e.reason}"
             location = e.headers["Location"]
