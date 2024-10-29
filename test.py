@@ -14,7 +14,7 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw4"
+CURRENT = "hw5"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -350,12 +350,12 @@ HW5 = [
     start_server,
     check_has_form("/profile/login/", "post", "/profile/login/"),
     check_login("/profile/login/", "pavpan", "pavpan"),
-    check_login("/profile/login/", "ta2", "ta2"),
-    check_login("/profile/login/", "s1", "s1"),
-    check_not_login("/profile/login/", "s1", "s2"),
-    check_get_logged_in("/profile/login/", "s1", "s1", "/profile/"),
-    check_get_logged_in("/profile/login/", "ta2", "ta2", "/profile/"),
-    check_logout("/profile/login/", "s1", "s1", "/profile/logout/"),
+    check_login("/profile/login/", "g", "g"),
+    check_login("/profile/login/", "a", "a"),
+    check_not_login("/profile/login/", "a", "b"),
+    check_get_logged_in("/profile/login/", "a", "a", "/profile/"),
+    check_get_logged_in("/profile/login/", "b", "b", "/profile/"),
+    check_logout("/profile/login/", "a", "a", "/profile/logout/"),
 ]
 
 HW6 = [
