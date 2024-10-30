@@ -19,7 +19,7 @@ SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
 OPENER = urllib.request.build_opener(
-    HTTPNoRedirectHandler(),
+    #HTTPNoRedirectHandler(),
     urllib.request.HTTPCookieProcessor(COOKIE_JAR)
 )
 
