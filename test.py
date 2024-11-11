@@ -14,12 +14,12 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw5"
+CURRENT = "hw6"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
 OPENER = urllib.request.build_opener(
-    #HTTPNoRedirectHandler(),
+    HTTPNoRedirectHandler(),
     urllib.request.HTTPCookieProcessor(COOKIE_JAR)
 )
 
@@ -207,6 +207,7 @@ def check_submit_redirect(url, fields, next_url):
                 print(f"Skipping uninteresting cookie for {cookie.name}")
     return f
 
+# TODO: Make sure it works even if the next input is first
 def check_login(url, user, pwd):
     @name(f"Log in to {url} as {user}:{pwd}")
     def f(timeout=TIMEOUT):
@@ -361,9 +362,9 @@ HW5 = [
 HW6 = [
     start_server,
     check_get("/static/main.js"),
-    check_contains("/static/main.js", "function say_hi"),
-    check_contains("/static/main.js", "import { $ } from \"/static/jquery/src/jquery.js\";"),
     check_has_js("/profile/login/", "/static/main.js"),
+    check_contains("/static/main.js", "console.log"),
+    check_contains("/static/main.js", "import { $ } from \"/static/jquery/src/jquery.js\";"),
 ]
 
 HWS = {
