@@ -351,6 +351,7 @@ def check_dns_txt_record():
     attempted = False
     for rdata in answers:
         for txt_string in rdata.strings:
+            txt_string = txt_string.decode("latin1")
             print("Found TXT record", txt_string)
             attempted = True
             if match_txt_record(txt_string, repo_name):
