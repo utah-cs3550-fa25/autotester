@@ -366,7 +366,7 @@ def match_txt_record(record, repo):
     r_parts = record.casefold().replace("-", " ").split()
     n_parts = repo.casefold().replace("-", " ").split()
     overlap = set(r_parts) & set(n_parts)
-    if len(overlap) > 2:
+    if len(overlap) >= 2:
         return True
     else:
         return False
