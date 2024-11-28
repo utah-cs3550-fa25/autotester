@@ -430,7 +430,6 @@ HW6 = [
 ]
 
 HW7 = [
-    install_dnspython,
     check_dns_file,
     check_dns_txt_record,
 ]
