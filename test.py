@@ -14,7 +14,7 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw6"
+CURRENT = "hw7"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -38,7 +38,7 @@ def download_file(url, path):
             out.write(s)
 
 def prerun(hw):
-    if hw not in [HW1, HW2, HW3a]:
+    if hw not in [HW1, HW2, HW3a, HW7]:
         download_file("https://raw.githubusercontent.com/utah-cs3550-fa24/assignments/main/resources/makedata.py", "makedata.py")
         assert os.path.exists("makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
@@ -46,6 +46,10 @@ def prerun(hw):
                        check=True, executable=sys.executable, timeout=TIMEOUT)
         subprocess.run(["python3", "makedata.py"],
                        check=True, executable=sys.executable, timeout=TIMEOUT)
+    if hw in [HW7]:
+        subprocess.run(["python3", "-m", "pip", "install", "dnspython"])
+        import dns
+
 
 @name("Server starts up")
 def start_server(timeout=TIMEOUT):
@@ -306,6 +310,64 @@ def check_contains(url, s):
             f"Count not find {s!r} in {url}"
     return f
 
+        
+
+@name("Look for a DOMAIN.md file")
+def check_dns_file():
+    names = [
+        "DOMAIN.md", "domain.md", "Domain.md",
+        "DOMAINS.md", "domains.md", "Domains.md",
+        "DOMAIN.txt", "domain.txt", "Domain.txt",
+        "DOMAINS.txt", "domains.txt", "Domains.txt",
+    ]
+    for i in names:
+        if os.path.exists(i):
+            with open(i) as f:
+                domain = next(f).strip()
+                assert " " not in domain, f"Expected domain, got {domain!r}"
+                assert "." in domain, f"Expected domain, got {domain!r}"
+            return
+
+@name("Check that the TXT record matches")
+def check_dns_file():
+    names = [
+        "DOMAIN.md", "domain.md", "Domain.md",
+        "DOMAINS.md", "domains.md", "Domains.md",
+        "DOMAIN.txt", "domain.txt", "Domain.txt",
+        "DOMAINS.txt", "domains.txt", "Domains.txt",
+    ]
+    repo_name = os.getenv("GITHUB_REPOSITORY").split("/", 1)[1].replace("PE-A", "PENA")
+    for i in names:
+        if os.path.exists(i):
+            with open(i) as f:
+                domain = next(f).strip()
+                assert " " not in domain, f"Expected domain, got {domain!r}"
+                assert "." in domain, f"Expected domain, got {domain!r}"
+                break
+
+    answers = dns.resolver.query(domain, "TXT")
+    matched = False
+    attempted = False
+    for rdata in answers:
+        for txt_string in rdata.strings:
+            print("Found TXT record", txt_string)
+            attempted = True
+            if match_txt_record(txt_string, repo_name):
+                matched = True
+                print("  Matched repository name")
+            else:
+                print("  No match for repository name")
+    assert matched, "Did not find a matching TXT record" + \
+        ("" if not attempted else f". Please TXT record to {repo_name}")
+
+def match_txt_record(record, repo):
+    r_parts = record.casefold().replace("-", " ").split()
+    n_parts = repo.casefold().replace("-", " ").split()
+    overlap = set(r_parts) & set(n_parts)
+    if len(overlap) > 2:
+        return True
+    else:
+        return False
 
 
 HW1 = [
@@ -367,6 +429,12 @@ HW6 = [
     check_contains("/static/main.js", "import { $ } from \"/static/jquery/src/jquery.js\";"),
 ]
 
+HW7 = [
+    install_dnspython,
+    check_dns_file,
+    check_dns_txt_record,
+]
+
 HWS = {
     "hw1": HW1,
     "hw2": HW2,
@@ -375,6 +443,7 @@ HWS = {
     "hw4": HW4,
     "hw5": HW5,
     "hw6": HW6,
+    "hw7": HW7,
 }
 
 def run(hw, part):
