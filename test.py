@@ -360,7 +360,7 @@ def check_dns_txt_record():
             else:
                 print("  No match for repository name")
     assert matched, "Did not find a matching TXT record" + \
-        ("" if not attempted else f". Please TXT record to {repo_name}")
+        ("" if not attempted else f". Please change TXT record to {repo_name}")
 
 def match_txt_record(record, repo):
     r_parts = record.casefold().replace("-", " ").split()
