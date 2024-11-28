@@ -329,7 +329,8 @@ def check_dns_file():
             return
 
 @name("Check that the TXT record matches")
-def check_dns_file():
+def check_dns_txt_record():
+    import dns
     names = [
         "DOMAIN.md", "domain.md", "Domain.md",
         "DOMAINS.md", "domains.md", "Domains.md",
