@@ -48,7 +48,7 @@ def prerun(hw):
                        check=True, executable=sys.executable, timeout=TIMEOUT)
     if hw in [HW7]:
         subprocess.run(["python3", "-m", "pip", "install", "dnspython"])
-        import dns
+        import dns.resolver
 
 
 @name("Server starts up")
@@ -330,7 +330,7 @@ def check_dns_file():
 
 @name("Check that the TXT record matches")
 def check_dns_txt_record():
-    import dns
+    import dns.resolver
     names = [
         "DOMAIN.md", "domain.md", "Domain.md",
         "DOMAINS.md", "domains.md", "Domains.md",
