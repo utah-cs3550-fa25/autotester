@@ -338,6 +338,7 @@ def check_dns_txt_record():
         "DOMAINS.txt", "domains.txt", "Domains.txt",
     ]
     repo_name = os.getenv("GITHUB_REPOSITORY").split("/", 1)[1].replace("PE-A", "PENA")
+    domain = None
     for i in names:
         if os.path.exists(i):
             with open(i) as f:
@@ -345,6 +346,8 @@ def check_dns_txt_record():
                 assert " " not in domain, f"Expected domain, got {domain!r}"
                 assert "." in domain, f"Expected domain, got {domain!r}"
                 break
+    assert domain, "No domain found in DOMAIN.md"
+        
 
     answers = dns.resolver.query(domain, "TXT")
     matched = False
