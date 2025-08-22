@@ -14,7 +14,7 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw7"
+CURRENT = "hw1"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
