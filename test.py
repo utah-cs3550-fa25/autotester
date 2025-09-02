@@ -14,7 +14,7 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw1"
+CURRENT = "hw2"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -110,6 +110,27 @@ def check_has_css(url, css):
                     assert "media" not in link, "<link> element should not have media attribute"
                     if "type" in link: assert link["type"] == "text/css", "Stylesheets should have type=text/css"
                     return
+        else:
+            raise ValueError(f"Could not find a <link> element with href={css}")
+    return f
+
+def check_meta_viewport(url):
+    @name(f"Check that {url} has a <meta name=viewport> tag")
+    def f(timeout=TIMEOUT):
+        start_server(timeout)
+        response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
+        assert 200 <= response.status < 300, \
+            f"Expected a successful response, got {response.status} {response.reason}"
+        parser = HTMLFindElement("meta")
+        parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
+        for meta in parser.found:
+            if "name" in meta and meta["name"] == "viewport":
+                assert "content" in meta, "<meta> element should have a content element"
+                parts = [part.strip() for part in meta["content"].split(",") if part.strip()]
+                assert "width=device-width" in parts, "<meta> content should have width=device-width"
+                assert "initial-scale=1" in parts, "<meta> content should have initial-scale=1"
+                assert len(parts) == 2, "<meta> content should have two fields"
+                return
         else:
             raise ValueError(f"Could not find a <link> element with href={css}")
     return f
@@ -383,11 +404,12 @@ HW1 = [
 HW2 = [
     start_server,
     check_get("/static/main.css"),
-    check_has_css("/static/index.html", "/static/main.css"),
-    check_has_css("/static/assignment.html", "/static/main.css"),
-    check_has_css("/static/submissions.html", "/static/main.css"),
-    check_has_css("/static/profile.html", "/static/main.css"),
-    check_has_css("/static/login.html", "/static/main.css"),
+    check_contains("/static/main.css", "* { margin: 0; padding: 0; box-sizing: border-box; }"),
+    check_meta_viewport("/static/index.html"),
+    check_meta_viewport("/static/recipe.html"),
+    check_meta_viewport("/static/search.html"),
+    check_meta_viewport("/static/login.html"),
+    check_meta_viewport("/static/profile.html"),
 ]
 
 HW3a = [
