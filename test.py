@@ -403,6 +403,8 @@ def match_txt_record(record, repo):
     else:
         return False
 
+def any_whitespace(s):
+    return re.compile(re.escape(s).replace(r"\ ", r"\s*"))
 
 HW1 = [
     start_server,
@@ -412,7 +414,7 @@ HW1 = [
 HW2 = [
     start_server,
     check_get("/static/main.css"),
-    check_contains("/static/main.css", re.compile(re.escape("* { margin: 0; padding: 0; box-sizing: border-box;? }").replace(r"\ ", r"\s*")),
+    check_contains("/static/main.css", any_whitespace("* { margin: 0; padding: 0; box-sizing: border-box; }")),
     check_meta_viewport("/static/index.html"),
     check_meta_viewport("/static/recipe.html"),
     check_meta_viewport("/static/search.html"),
