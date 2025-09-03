@@ -322,8 +322,8 @@ def check_logout(url, uname, pwd, url2):
     return f
 
 def check_contains(url, s):
-    name = s if isinstance(s, str) else s.pattern.replace(r"\s+", " ").replace("\\", "").replace("?", "")
-    @name(f"Check that {url} contains the string {name!r}")
+    s_name = s if isinstance(s, str) else s.pattern.replace(r"\s+", " ").replace("\\", "").replace("?", "")
+    @name(f"Check that {url} contains the string {s_name!r}")
     def f(timeout=TIMEOUT):
         start_server(timeout)
         response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
@@ -331,10 +331,10 @@ def check_contains(url, s):
             f"Expected a successful response, got {response.status} {response.reason}"
         if isinstance(s, str):
             assert s in response.read().decode('latin1'), \
-                f"Count not find {name!r} in {url}"
+                f"Count not find {s_name!r} in {url}"
         elif isinstance(s, re.Pattern):
             assert s.search(response.read().decode('latin1')), \
-                f"Count not find {name!r} in {url}"
+                f"Count not find {s_name!r} in {url}"
         else:
             raise Exception(f"Invalid pattern {s!r}")
     return f
