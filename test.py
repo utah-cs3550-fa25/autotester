@@ -8,6 +8,7 @@ import os
 import socket
 import html.parser
 import http.cookiejar
+import re
 
 class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, hdrs, newurl):
@@ -321,14 +322,21 @@ def check_logout(url, uname, pwd, url2):
     return f
 
 def check_contains(url, s):
-    @name(f"Check that {url} contains the string {s!r}")
+    name = s if isinstance(s, str) else s.pattern.replace(r"\s+", " ").replace("\\", "").replace("?", "")
+    @name(f"Check that {url} contains the string {name!r}")
     def f(timeout=TIMEOUT):
         start_server(timeout)
         response = urllib.request.urlopen("http://localhost:8000" + url, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
-        assert s in response.read().decode('latin1'), \
-            f"Count not find {s!r} in {url}"
+        if isinstance(s, str):
+            assert s in response.read().decode('latin1'), \
+                f"Count not find {name!r} in {url}"
+        elif isinstance(s, re.Pattern):
+            assert s.search(response.read().decode('latin1')), \
+                f"Count not find {name!r} in {url}"
+        else:
+            raise Exception(f"Invalid pattern {s!r}")
     return f
 
         
@@ -404,7 +412,7 @@ HW1 = [
 HW2 = [
     start_server,
     check_get("/static/main.css"),
-    check_contains("/static/main.css", "* { margin: 0; padding: 0; box-sizing: border-box; }"),
+    check_contains("/static/main.css", re.compile(re.escape("* { margin: 0; padding: 0; box-sizing: border-box;? }").replace(r"\ ", r"\s*")),
     check_meta_viewport("/static/index.html"),
     check_meta_viewport("/static/recipe.html"),
     check_meta_viewport("/static/search.html"),
