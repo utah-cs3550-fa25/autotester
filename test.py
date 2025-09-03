@@ -322,7 +322,7 @@ def check_logout(url, uname, pwd, url2):
     return f
 
 def check_contains(url, s):
-    s_name = s if isinstance(s, str) else s.pattern.replace(r"\s+", " ").replace("\\", "").replace("?", "")
+    s_name = s if isinstance(s, str) else s.pattern.replace(r"\s*", " ").replace("\\", "")
     @name(f"Check that {url} contains the string {s_name!r}")
     def f(timeout=TIMEOUT):
         start_server(timeout)
