@@ -133,7 +133,7 @@ def check_meta_viewport(url):
                 assert len(parts) == 2, "<meta> content should have two fields"
                 return
         else:
-            raise ValueError(f"Could not find a <link> element with href={css}")
+            raise ValueError(f"Could not find a <meta name=viewport>")
     return f
 
 def check_has_js(url, js):
