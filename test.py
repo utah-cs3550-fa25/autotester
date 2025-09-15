@@ -418,15 +418,6 @@ HW2 = [
     check_meta_viewport("/static/profile.html"),
 ]
 
-HW3a = [
-    start_server,
-    check_get("/"),
-    check_get("/1/"),
-    check_get("/1/submissions"),
-    check_get("/profile"),
-    check_get("/profile/login"),
-]
-
 HW3 = [
     start_server,
     check_get("/"),
@@ -470,7 +461,6 @@ HW7 = [
 HWS = {
     "hw1": HW1,
     "hw2": HW2,
-    "hw3a": HW3a,
     "hw3": HW3,
     "hw4": HW4,
     "hw5": HW5,
