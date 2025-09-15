@@ -421,10 +421,10 @@ HW2 = [
 HW3 = [
     start_server,
     check_get("/"),
-    check_get("/1/"),
-    check_get("/1/submissions"),
-    check_get("/profile"),
-    check_get("/profile/login"),
+    check_get("/profile/b"),
+    check_get("/recipe/3"),
+    check_get("/s?tag:comfort"),
+    check_get("/login"),
 ]
 
 HW4 = [
