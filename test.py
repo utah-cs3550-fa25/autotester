@@ -15,7 +15,7 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw2"
+CURRENT = "hw3"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -30,25 +30,21 @@ def name(n):
         return f
     return decorator
 
-def download_file(url, path):
-    resp = urllib.request.urlopen(url)
-    with open(path, "wb") as out:
-        while True:
-            s = resp.read1()
-            if not s: break
-            out.write(s)
+def git_clone(url, path):
+    subprocess.run(["git", "clone", url, path])
 
 def prerun(hw):
-    if hw not in [HW1, HW2, HW3a, HW7]:
-        download_file("https://raw.githubusercontent.com/utah-cs3550-fa24/assignments/main/resources/makedata.py", "makedata.py")
+    subprocess.run(["python3", "-m", "pip", "install", "pillow", "dnspython"])
+
+    if hw in [HW4, HW5, HW6]:
+        git_clone("https://github.com/utah-cs3550-fa25/assignments.git", "assignments")
         assert os.path.exists("makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
         subprocess.run(["python3", "manage.py", "migrate"],
                        check=True, executable=sys.executable, timeout=TIMEOUT)
-        subprocess.run(["python3", "makedata.py"],
+        subprocess.run(["python3", "assignments/assets/makedata.py"],
                        check=True, executable=sys.executable, timeout=TIMEOUT)
     if hw in [HW7]:
-        subprocess.run(["python3", "-m", "pip", "install", "dnspython"])
         import dns.resolver
 
 
