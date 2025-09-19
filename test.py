@@ -33,12 +33,14 @@ def name(n):
 def git_clone(url, path):
     subprocess.run(["git", "clone", url, path])
 
-def prerun(hw):
-    subprocess.run(["python3", "-m", "pip", "install", "pillow", "dnspython"])
+def setup():
+    subprocess.run(["python3", "-m", "pip", "install", "django>=5", "pillow", "dnspython"])
+    subprocess.run(["python3", "manage.py", "migrate"])
 
+def prerun(hw):
     if hw in [HW4, HW5, HW6]:
         git_clone("https://github.com/utah-cs3550-fa25/assignments.git", "assignments")
-        assert os.path.exists("makedata.py")
+        assert os.path.exists("assignments/assets/makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
         subprocess.run(["python3", "manage.py", "migrate"],
                        check=True, executable=sys.executable, timeout=TIMEOUT)
@@ -505,6 +507,8 @@ def main():
                 return usage()
             elif part == "gh":
                 return gh(hw)
+            elif part == "setup":
+                return setup()
             elif part.isdigit() and int(part) - 1 < len(hw):
                 return run(hw, int(part) - 1)
             else:
