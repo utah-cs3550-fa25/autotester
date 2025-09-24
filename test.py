@@ -38,7 +38,7 @@ def setup():
     subprocess.run(["python3", "manage.py", "migrate"])
 
 def prerun(hw):
-    if hw in [HW4, HW5, HW6]:
+    if hw in [HW3, HW4, HW5, HW6]:
         git_clone("https://github.com/utah-cs3550-fa25/assignments.git", "assignments")
         assert os.path.exists("assignments/assets/makedata.py")
         if os.path.exists("db.sqlite3"): os.unlink("db.sqlite3")
