@@ -15,7 +15,7 @@ class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw3"
+CURRENT = "hw4"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
@@ -164,21 +164,22 @@ def check_has_form(url, method, action):
         parser = HTMLFindElement("form")
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         for form in parser.found:
-            if "method" in form and form["method"].casefold() == method.casefold():
-                print(f"Form has method={method}, as expected")
-            elif "method" not in form:
-                print(f"ERROR: Form does not have method attribute")
-                continue
-            else:
-                print(f'ERROR: Form has method=\"{form["method"]}\", not method=method')
-                continue
             if "action" in form and form["action"].rstrip("/") == action.rstrip("/"):
-                print(f"Form has action={action}, as expected")
+                print(f"SUCCESS: Found form with action={action}, grading")
             elif "action" not in form:
                 print(f"ERROR: Form does not have action attribute")
                 continue
             else:
-                print(f'ERROR: Form has action=\"{form["action"]}\", not action=action')
+                print(f"NOTE: Found form with action={action}, skipping")
+                continue
+
+            if "method" in form and form["method"].casefold() == method.casefold():
+                print(f"SUCCESS: Form has method={method}, as expected")
+            elif "method" not in form:
+                print(f"ERROR: Form does not have method attribute")
+                continue
+            else:
+                print(f'ERROR: Form has method=\"{form["method"]}\", not method={method}')
                 continue
             break
         else:
@@ -429,10 +430,37 @@ HW3 = [
     check_get("/login"),
 ]
 
+VALID_RECIPE = {
+    "title":"Scone with Honey Butter",
+    "prep_time":"20",
+    "cook_time":"15",
+    "serves":"8",
+    "description":"xyz",
+    "x38":"xyz",
+    "y54amount":"2.5","y54unit":"cup","y54name":"all-purpose flour",
+    "y55amount":"0.25","y55unit":"cup","y55name":"granulated sugar",
+    "y56amount":"1.0","y56unit":"tablespoon","y56name":"baking powder",
+    "y57amount":"0.5","y57unit":"teaspoon","y57name":"salt",
+    "x39":"xyz",
+    "y58amount":"0.5","y58unit":"cup","y58name":"butter, cold and cubed",
+    "x40":"xyz",
+    "y59amount":"0.5","y59unit":"cup","y59name":"heavy cream",
+    "y60amount":"1.0","y60unit":"large","y60name":"egg",
+    "x41":"xyz",
+    "x42":"xyz",
+    "y61amount":"2.0","y61unit":"tablespoon","y61name":"milk",
+    "x43":"xyz",
+    "x44":"xyz",
+    "y62amount":"0.25","y62unit":"cup","y62name":"butter, softened",
+    "y63amount":"1.0","y63unit":"tablespoon","y63name":"honey",
+    "x45":"xyz",
+}
+
 HW4 = [
     start_server,
-    check_has_form("/1/submissions", "post", "/1/submissions"),
-    check_submit_redirect("/1/submissions", { "grade-1": "0.0" }, "/1/submissions")
+    check_has_form("/recipe/7", "get", "/recipe/7/edit"),
+    check_has_form("/recipe/7/edit", "post", "/recipe/7"),
+    check_submit_redirect("/recipe/7/edit", VALID_RECIPE, "/recipe/7")
 ]
 
 HW5 = [
