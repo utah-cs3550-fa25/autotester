@@ -169,8 +169,16 @@ def check_has_form(url, method, action):
             elif "action" not in form:
                 print(f"ERROR: Form does not have action attribute")
                 continue
+            elif url.endswith("/edit") and action.endswith("/edit") and "action" in form and \
+                 form["action"].rstrip("/") == action.rstrip("/edit"):
+                # TODO: bug that is grandfathered in for Fall 2025
+                print(f"ALLOWED: Found form with action={form['action']}, passing")
+                print(f"         The form should actually point to {action}")
+                print(f"         However, there was a bug in the auto-tester so")
+                print(f"         your (incorrect) form is being accepted.")
+                
             else:
-                print(f"NOTE: Found form with action={action}, skipping")
+                print(f"NOTE: Found form with action=\"{form['action']}\", skipping")
                 continue
 
             if "method" in form and form["method"].casefold() == method.casefold():
@@ -459,7 +467,7 @@ VALID_RECIPE = {
 HW4 = [
     start_server,
     check_has_form("/recipe/7", "get", "/recipe/7/edit"),
-    check_has_form("/recipe/7/edit", "post", "/recipe/7"),
+    check_has_form("/recipe/7/edit", "post", "/recipe/7/edit"),
     check_submit_redirect("/recipe/7/edit", VALID_RECIPE, "/recipe/7")
 ]
 
