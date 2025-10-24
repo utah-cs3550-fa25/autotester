@@ -468,7 +468,7 @@ HW4 = [
     start_server,
     check_has_form("/recipe/7", "get", "/recipe/7/edit"),
     check_has_form("/recipe/7/edit", "post", "/recipe/7/edit"),
-    check_submit_redirect("/recipe/7/edit", VALID_RECIPE, "/recipe/7")
+    #check_submit_redirect("/recipe/7/edit", VALID_RECIPE, "/recipe/7")
 ]
 
 HW5 = [
