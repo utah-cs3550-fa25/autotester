@@ -302,14 +302,14 @@ def check_not_login(url, uname, pwd):
             print("Login succeeded; that's bad, it should fail!")
     return f
 
-def check_get_logged_in(url, uname, pwd, url2):
+def check_get_logged_in(url, uname, pwd, url2, content):
     @name(f"Check {url2} after logging in as {uname}:{pwd}")
     def f(timeout=TIMEOUT):
         check_login(url, uname, pwd)(timeout)
         assert SESSIONID, "Could not find a session id, please report this immediately"
         response = OPENER.open("http://localhost:8000" + url2)
-        assert uname in response.read().decode("latin1"), \
-            f"Could not find {uname} on {url2} after logging in as {uname}:{pwd}"
+        assert content in response.read().decode("latin1"), \
+            f"Could not find {content!r} on {url2} after logging in as {uname}:{pwd}"
         print(f"Found {uname} in {url2}")
     return f
 
