@@ -244,6 +244,7 @@ def check_submit_redirect(url, fields, next_url):
 def check_login(url, user, pwd):
     @name(f"Log in to {url} as {user}:{pwd}")
     def f(timeout=TIMEOUT):
+        nonlocal url
         start_server(timeout)
         try:
             response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
