@@ -245,7 +245,11 @@ def check_login(url, user, pwd):
     @name(f"Log in to {url} as {user}:{pwd}")
     def f(timeout=TIMEOUT):
         start_server(timeout)
-        response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
+        try:
+            response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
+        except urllib.error.HTTPError:
+            url += "/"
+            response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
         parser = HTMLFindElement("input")
