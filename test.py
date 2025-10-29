@@ -10,19 +10,12 @@ import html.parser
 import http.cookiejar
 import re
 
-class HTTPNoRedirectHandler(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, hdrs, newurl):
-        return None
-
 TIMEOUT = 10 # seconds
 CURRENT = "hw5"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
-OPENER = urllib.request.build_opener(
-    HTTPNoRedirectHandler(),
-    urllib.request.HTTPCookieProcessor(COOKIE_JAR)
-)
+OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
 
 def name(n):
     def decorator(f):
@@ -103,9 +96,18 @@ class HTMLFindFormInput(html.parser.HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if tag == "form":
-            if "method" not in attrs or attrs["method"] != self.method: return
-            if "action" not in attrs or attrs["action"] != self.action: return
+            html_attrs = "".join(f" {k}='{v}'" for k, v in attrs)
+            print(f"Found form <{tag}{html_attrs}>")
+            attrs = dict(attrs)
+            if "method" not in attrs or attrs["method"].casefold() != self.method:
+                print(f"  Skipping, method {attrs['method']} but looking for {self.method}")
+                return
+            if "action" not in attrs or attrs["action"] not in (self.action, self.action + "/"):
+                print(f"  Skipping, action {attrs['action']} but looking for {self.action}")
+                return
+            print(f"  Collecting input elements")
             self.in_form = True
+            self.action = attrs["action"]
         if tag == "input" and self.in_form:
             html_attrs = "".join(f" {k}='{v}'" for k, v in attrs)
             print(f"Found <{tag}{html_attrs}>")
@@ -295,16 +297,16 @@ def check_login(url, user, pwd):
             else:
                 print("Confused by extra input element", iput)
         if not username_name:
-            raise ValueError(f"Count not find username input field on {url}")
+            raise ValueError(f"Could not find username input field on {url}")
         if not password_name:
-            raise ValueError(f"Count not find password input field on {url}; make sure to use type=password")
+            raise ValueError(f"Coldt not find password input field on {url}; make sure to use type=password")
         print(f"Found <input name={username_name}> for username")
         print(f"Found <input name={password_name}> for password")
         data = urllib.parse.urlencode({
             username_name: user,
             password_name: pwd,
         } | dict(other_fields)).encode("utf8")
-        login_response = OPENER.open("http://localhost:8000" + url, data, timeout=timeout)
+        login_response = OPENER.open("http://localhost:8000" + parser.action, data, timeout=timeout)
         assert 200 <= login_response.status < 300, \
             f"Expected a redirect from a successful login, got {login_response.status} {login_response.reason}"
         for cookie in COOKIE_JAR:
