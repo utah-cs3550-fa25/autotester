@@ -100,10 +100,10 @@ class HTMLFindFormInput(html.parser.HTMLParser):
             print(f"Found form <{tag}{html_attrs}>")
             attrs = dict(attrs)
             if "method" not in attrs or attrs["method"].casefold() != self.method:
-                print(f"  Skipping, method {attrs['method']} but looking for {self.method}")
+                print(f"  Skipping, method {attrs.get('method', '')!r} but looking for {self.method}")
                 return
             if "action" not in attrs or attrs["action"] not in (self.action, self.action + "/"):
-                print(f"  Skipping, action {attrs['action']} but looking for {self.action}")
+                print(f"  Skipping, action {attrs.get('action', '')!r} but looking for {self.action}")
                 return
             print(f"  Collecting input elements")
             self.in_form = True
@@ -299,7 +299,7 @@ def check_login(url, user, pwd):
         if not username_name:
             raise ValueError(f"Could not find username input field on {url}")
         if not password_name:
-            raise ValueError(f"Coldt not find password input field on {url}; make sure to use type=password")
+            raise ValueError(f"Could not find password input field on {url}; make sure to use type=password")
         print(f"Found <input name={username_name}> for username")
         print(f"Found <input name={password_name}> for password")
         data = urllib.parse.urlencode({
