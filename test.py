@@ -93,6 +93,29 @@ class HTMLFindElement(html.parser.HTMLParser):
             print(f"Found <{tag}{html_attrs}>")
             self.found.append(dict(attrs))
 
+class HTMLFindFormInput(html.parser.HTMLParser):
+    def __init__(self, method, action):
+        html.parser.HTMLParser.__init__(self)
+        self.found = []
+        self.in_form = False
+        self.method = method
+        self.action = action
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "form":
+            if "method" not in attrs or attrs["method"] != self.method: return
+            if "action" not in attrs or attrs["action"] != self.action: return
+            self.in_form = True
+        if tag == "input" and self.in_form:
+            html_attrs = "".join(f" {k}='{v}'" for k, v in attrs)
+            print(f"Found <{tag}{html_attrs}>")
+            self.found.append(dict(attrs))
+
+    def handle_endtag(self, tag):
+        if tag == "form" and self.in_form:
+            self.in_form = False
+
+
 def check_has_css(url, css):
     @name(f"Check that {url} links to {css}")
     def f(timeout=TIMEOUT):
@@ -201,7 +224,7 @@ def check_submit_redirect(url, fields, next_url):
         response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
-        parser = HTMLFindElement("input")
+        parser = HTMLFindFormInput("post", url)
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         filled_fields = {}
         for iput in parser.found:
@@ -253,7 +276,7 @@ def check_login(url, user, pwd):
             response = OPENER.open("http://localhost:8000" + url, timeout=timeout)
         assert 200 <= response.status < 300, \
             f"Expected a successful response, got {response.status} {response.reason}"
-        parser = HTMLFindElement("input")
+        parser = HTMLFindFormInput("post", url)
         parser.feed(response.read().decode('latin1')) # to avoid ever erroring in decode
         username_name = None
         password_name = None
