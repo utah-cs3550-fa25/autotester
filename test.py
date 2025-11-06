@@ -514,9 +514,11 @@ HW5 = [
 HW6 = [
     start_server,
     check_get("/static/main.js"),
-    check_has_js("/profile/login/", "/static/main.js"),
     check_contains("/static/main.js", "console.log"),
-    check_contains("/static/main.js", "import { $ } from \"/static/jquery/src/jquery.js\";"),
+    check_has_js("/", "/static/main.js"),
+    check_has_js("/login", "/static/main.js"),
+    check_has_js("/recipe/12/", "/static/main.js"),
+    check_has_js("/s", "/static/main.js"),
 ]
 
 HW7 = [
