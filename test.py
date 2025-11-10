@@ -517,7 +517,7 @@ HW6 = [
     check_contains("/static/main.js", "console.log"),
     check_has_js("/", "/static/main.js"),
     check_has_js("/login", "/static/main.js"),
-    check_has_js("/recipe/12", "/static/main.js"),
+    check_has_js("/recipe/27", "/static/main.js"),
     check_has_js("/s", "/static/main.js"),
 ]
 
