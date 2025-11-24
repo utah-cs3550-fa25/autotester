@@ -11,7 +11,7 @@ import http.cookiejar
 import re
 
 TIMEOUT = 10 # seconds
-CURRENT = "hw6"
+CURRENT = "hw7"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
