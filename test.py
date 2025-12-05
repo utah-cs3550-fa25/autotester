@@ -624,8 +624,10 @@ def do_remote_login(username, password):
     login_data[password_field] = password
     
     data = urllib.parse.urlencode(login_data).encode("utf8")
+    # Use the form's action URL (with trailing slash) to avoid POST->GET redirect
+    post_url = REMOTE_BASE_URL + parser.action
     try:
-        REMOTE_OPENER.open(login_url, data, timeout=REMOTE_TIMEOUT)
+        REMOTE_OPENER.open(post_url, data, timeout=REMOTE_TIMEOUT)
     except urllib.error.HTTPError as e:
         if not (300 <= e.code < 400):
             raise
