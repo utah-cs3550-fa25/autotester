@@ -9,13 +9,29 @@ import socket
 import html.parser
 import http.cookiejar
 import re
+import ssl
+import io
 
 TIMEOUT = 10 # seconds
+REMOTE_TIMEOUT = 30 # seconds for remote requests
 CURRENT = "hw7"
 SERVER = None
 SESSIONID = None
 COOKIE_JAR = http.cookiejar.CookieJar()
 OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(COOKIE_JAR))
+
+# Remote testing globals (for HW7)
+REMOTE_DOMAIN = None
+REMOTE_IP = None
+REMOTE_BASE_URL = None  # Will be set to https://domain or http://domain or http://ip
+REMOTE_COOKIE_JAR = http.cookiejar.CookieJar()
+REMOTE_SSL_CONTEXT = ssl.create_default_context()
+REMOTE_SSL_CONTEXT.check_hostname = False
+REMOTE_SSL_CONTEXT.verify_mode = ssl.CERT_NONE  # Allow self-signed certs initially
+REMOTE_OPENER = urllib.request.build_opener(
+    urllib.request.HTTPCookieProcessor(REMOTE_COOKIE_JAR),
+    urllib.request.HTTPSHandler(context=REMOTE_SSL_CONTEXT)
+)
 
 def name(n):
     def decorator(f):
@@ -93,6 +109,8 @@ class HTMLFindFormInput(html.parser.HTMLParser):
         self.in_form = False
         self.method = method
         self.action = action
+        self.current_textarea = None
+        self.textarea_content = ""
 
     def handle_starttag(self, tag, attrs):
         if tag == "form":
@@ -112,10 +130,22 @@ class HTMLFindFormInput(html.parser.HTMLParser):
             html_attrs = "".join(f" {k}='{v}'" for k, v in attrs)
             print(f"Found <{tag}{html_attrs}>")
             self.found.append(dict(attrs))
+        if tag == "textarea" and self.in_form:
+            self.current_textarea = dict(attrs)
+            self.textarea_content = ""
+
+    def handle_data(self, data):
+        if self.current_textarea is not None:
+            self.textarea_content += data
 
     def handle_endtag(self, tag):
         if tag == "form" and self.in_form:
             self.in_form = False
+        if tag == "textarea" and self.current_textarea is not None:
+            self.current_textarea["value"] = self.textarea_content
+            self.current_textarea["_is_textarea"] = True
+            self.found.append(self.current_textarea)
+            self.current_textarea = None
 
 
 def check_has_css(url, css):
@@ -440,6 +470,609 @@ def match_txt_record(record, repo):
     else:
         return False
 
+
+# =============================================================================
+# HW7 Remote Testing Helpers
+# =============================================================================
+
+def get_domain_file_contents():
+    """Read domain and optionally IP from DOMAIN.md file."""
+    names = [
+        "DOMAIN.md", "domain.md", "Domain.md",
+        "DOMAINS.md", "domains.md", "Domains.md",
+        "DOMAIN.txt", "domain.txt", "Domain.txt",
+        "DOMAINS.txt", "domains.txt", "Domains.txt",
+    ]
+    for fname in names:
+        if os.path.exists(fname):
+            with open(fname) as f:
+                lines = [line.strip() for line in f.readlines() if line.strip()]
+                domain = lines[0] if len(lines) > 0 else None
+                ip = lines[1] if len(lines) > 1 else None
+                return domain, ip
+    return None, None
+
+
+def is_valid_ip(ip):
+    """Check if string is a valid IPv4 address."""
+    if not ip:
+        return False
+    parts = ip.split(".")
+    if len(parts) != 4:
+        return False
+    try:
+        return all(0 <= int(p) <= 255 for p in parts)
+    except ValueError:
+        return False
+
+
+def is_valid_domain(domain):
+    """Basic domain validation."""
+    if not domain:
+        return False
+    if " " in domain:
+        return False
+    if "." not in domain:
+        return False
+    return True
+
+
+def remote_request(url, data=None, method=None, headers=None, timeout=REMOTE_TIMEOUT):
+    """Make a request to a remote server, returning (response, body) or raising."""
+    req = urllib.request.Request(url, data=data, method=method)
+    if headers:
+        for k, v in headers.items():
+            req.add_header(k, v)
+    response = REMOTE_OPENER.open(req, timeout=timeout)
+    body = response.read()
+    return response, body
+
+
+def try_remote_url(base_url, path="/", timeout=REMOTE_TIMEOUT):
+    """Try to fetch a URL, returns (response, body) or (None, None) on failure."""
+    url = base_url.rstrip("/") + path
+    try:
+        return remote_request(url, timeout=timeout)
+    except Exception as e:
+        print(f"  Failed to reach {url}: {e}")
+        return None, None
+
+
+def determine_base_url(domain, ip):
+    """Determine the best base URL to use for testing (https > http domain > http ip)."""
+    # Try HTTPS with domain first
+    if domain:
+        try:
+            url = f"https://{domain}/"
+            print(f"Trying {url}...")
+            req = urllib.request.Request(url)
+            response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+            print(f"  Success! Using https://{domain}")
+            return f"https://{domain}"
+        except Exception as e:
+            print(f"  HTTPS failed: {e}")
+    
+    # Try HTTP with domain (may redirect to HTTPS)
+    if domain:
+        try:
+            url = f"http://{domain}/"
+            print(f"Trying {url}...")
+            req = urllib.request.Request(url)
+            response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+            final_url = response.geturl()
+            if final_url.startswith("https://"):
+                print(f"  Redirected to HTTPS, using https://{domain}")
+                return f"https://{domain}"
+            print(f"  Success! Using http://{domain}")
+            return f"http://{domain}"
+        except Exception as e:
+            print(f"  HTTP domain failed: {e}")
+    
+    # Fall back to HTTP with IP
+    if ip:
+        try:
+            url = f"http://{ip}/"
+            print(f"Trying {url}...")
+            req = urllib.request.Request(url)
+            response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+            print(f"  Success! Using http://{ip}")
+            return f"http://{ip}"
+        except Exception as e:
+            print(f"  HTTP IP failed: {e}")
+    
+    return None
+
+
+def is_png(data):
+    """Check if data starts with PNG magic bytes."""
+    return len(data) >= 4 and data[0] == 0x89 and data[1] == 0x50 and data[2] == 0x4E and data[3] == 0x47
+
+
+def do_remote_login(username, password):
+    """Log in to the remote server. Must be called after REMOTE_BASE_URL is set."""
+    global REMOTE_BASE_URL
+    assert REMOTE_BASE_URL, "REMOTE_BASE_URL must be set before logging in"
+    
+    # Get login page
+    login_url = REMOTE_BASE_URL + "/login"
+    response, body = try_remote_url(REMOTE_BASE_URL, "/login")
+    if not response:
+        response, body = try_remote_url(REMOTE_BASE_URL, "/login/")
+        login_url = REMOTE_BASE_URL + "/login/"
+    assert response, "Failed to fetch login page"
+    
+    body_text = body.decode('latin1')
+    parser = HTMLFindFormInput("post", "/login")
+    parser.feed(body_text)
+    
+    login_data = {}
+    username_field = None
+    password_field = None
+    
+    for iput in parser.found:
+        if "name" not in iput:
+            continue
+        if "type" in iput and iput["type"] == "hidden":
+            login_data[iput["name"]] = iput.get("value", "")
+        elif "type" in iput and iput["type"] == "password":
+            password_field = iput["name"]
+        elif not username_field:
+            username_field = iput["name"]
+    
+    assert username_field and password_field, "Could not find login form fields"
+    login_data[username_field] = username
+    login_data[password_field] = password
+    
+    data = urllib.parse.urlencode(login_data).encode("utf8")
+    try:
+        REMOTE_OPENER.open(login_url, data, timeout=REMOTE_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if not (300 <= e.code < 400):
+            raise
+    
+    # Verify we got a session cookie
+    for cookie in REMOTE_COOKIE_JAR:
+        if cookie.name == "sessionid":
+            print(f"Logged in as {username}")
+            return
+    raise AssertionError(f"Failed to log in as {username}")
+
+
+def create_minimal_png():
+    """Create a minimal valid 1x1 red PNG file."""
+    # Minimal 1x1 red PNG
+    return bytes([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  # IHDR chunk
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,  # 1x1
+        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,  # 8-bit RGB
+        0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,  # IDAT chunk
+        0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,  # compressed data
+        0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x18, 0xDD,
+        0x8D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,  # IEND chunk
+        0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+    ])
+
+
+# =============================================================================
+# HW7 Phase 2 Tests
+# =============================================================================
+
+@name("Check that DOMAIN.md contains a valid IP address")
+def check_domain_has_ip():
+    domain, ip = get_domain_file_contents()
+    assert domain, "No domain found in DOMAIN.md"
+    assert is_valid_domain(domain), f"Invalid domain format: {domain!r}"
+    assert ip, "No IP address found on line 2 of DOMAIN.md"
+    assert is_valid_ip(ip), f"Invalid IP address format: {ip!r}"
+    print(f"Found domain: {domain}")
+    print(f"Found IP: {ip}")
+    global REMOTE_DOMAIN, REMOTE_IP
+    REMOTE_DOMAIN = domain
+    REMOTE_IP = ip
+
+
+@name("Check that machine at IP address is reachable")
+def check_machine_reachable():
+    domain, ip = get_domain_file_contents()
+    assert ip and is_valid_ip(ip), "No valid IP in DOMAIN.md"
+    
+    # Try to connect on port 443 first, then 80
+    connected = False
+    for port in [443, 80]:
+        try:
+            print(f"Trying to connect to {ip}:{port}...")
+            s = socket.create_connection((ip, port), timeout=REMOTE_TIMEOUT)
+            s.close()
+            print(f"  Successfully connected to port {port}")
+            connected = True
+            break
+        except OSError as e:
+            print(f"  Port {port} failed: {e}")
+    
+    assert connected, f"Could not connect to {ip} on port 80 or 443"
+
+
+# =============================================================================
+# HW7 Phase 3 Tests
+# =============================================================================
+
+@name("Check that HTTP request returns response with NGINX server header")
+def check_nginx_response():
+    domain, ip = get_domain_file_contents()
+    global REMOTE_BASE_URL
+    
+    REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not connect to server via HTTPS or HTTP"
+    
+    response, body = try_remote_url(REMOTE_BASE_URL, "/")
+    assert response, f"Failed to get response from {REMOTE_BASE_URL}"
+    
+    server = response.getheader("Server", "")
+    print(f"Server header: {server!r}")
+    assert "nginx" in server.lower(), f"Expected Server header to contain 'nginx', got {server!r}"
+    print("NGINX detected!")
+
+
+@name("Check that static files are served")
+def check_static_files():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    # Check main.css
+    response, body = try_remote_url(REMOTE_BASE_URL, "/static/main.css")
+    assert response, "Failed to fetch /static/main.css"
+    assert response.status == 200, f"Expected 200 for /static/main.css, got {response.status}"
+    print(f"/static/main.css: {len(body)} bytes")
+    
+    # Check main.js
+    response, body = try_remote_url(REMOTE_BASE_URL, "/static/main.js")
+    assert response, "Failed to fetch /static/main.js"
+    assert response.status == 200, f"Expected 200 for /static/main.js, got {response.status}"
+    print(f"/static/main.js: {len(body)} bytes")
+
+
+# =============================================================================
+# HW7 Phase 4 Tests
+# =============================================================================
+
+@name("Check that homepage loads")
+def check_homepage():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    response, body = try_remote_url(REMOTE_BASE_URL, "/")
+    assert response, "Failed to fetch homepage"
+    assert response.status == 200, f"Expected 200 for homepage, got {response.status}"
+    assert len(body) > 100, "Homepage seems too short"
+    print(f"Homepage loaded: {len(body)} bytes")
+
+
+@name("Check that login works (user c, password c)")
+def check_login_works():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    # Get login page to find CSRF token
+    login_url = REMOTE_BASE_URL + "/login"
+    print(f"Fetching login page: {login_url}")
+    response, body = try_remote_url(REMOTE_BASE_URL, "/login")
+    if not response:
+        # Try with trailing slash
+        response, body = try_remote_url(REMOTE_BASE_URL, "/login/")
+        login_url = REMOTE_BASE_URL + "/login/"
+    assert response, "Failed to fetch login page"
+    
+    # Parse to find form inputs
+    body_text = body.decode('latin1')
+    parser = HTMLFindFormInput("post", "/login")
+    parser.feed(body_text)
+    
+    # Build login data
+    login_data = {}
+    username_field = None
+    password_field = None
+    
+    for iput in parser.found:
+        if "name" not in iput:
+            continue
+        if "type" in iput and iput["type"] == "hidden":
+            login_data[iput["name"]] = iput.get("value", "")
+        elif "type" in iput and iput["type"] == "password":
+            password_field = iput["name"]
+        elif not username_field:
+            username_field = iput["name"]
+    
+    assert username_field, "Could not find username field"
+    assert password_field, "Could not find password field"
+    
+    login_data[username_field] = "c"
+    login_data[password_field] = "c"
+    
+    print(f"Logging in with {username_field}=c, {password_field}=c")
+    data = urllib.parse.urlencode(login_data).encode("utf8")
+    
+    try:
+        response = REMOTE_OPENER.open(login_url, data, timeout=REMOTE_TIMEOUT)
+    except urllib.error.HTTPError as e:
+        if 300 <= e.code < 400:
+            print(f"Login redirected to {e.headers.get('Location', 'unknown')}")
+            response = e
+        else:
+            raise
+    
+    # Check for session cookie
+    session_found = False
+    for cookie in REMOTE_COOKIE_JAR:
+        print(f"Cookie: {cookie.name}={cookie.value[:20]}...")
+        if cookie.name == "sessionid":
+            session_found = True
+    
+    assert session_found, "Did not receive session cookie after login"
+    print("Login successful!")
+
+
+@name("Check that recipe edit page works")
+def check_recipe_edit():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    # Need to log in first (each test is a separate process)
+    do_remote_login("c", "c")
+    
+    response, body = try_remote_url(REMOTE_BASE_URL, "/recipe/2/edit")
+    if not response:
+        response, body = try_remote_url(REMOTE_BASE_URL, "/recipe/2/edit/")
+    
+    assert response, "Failed to fetch /recipe/2/edit"
+    assert response.status == 200, f"Expected 200 for recipe edit, got {response.status}"
+    
+    body_text = body.decode('latin1')
+    assert "form" in body_text.lower(), "Edit page should contain a form"
+    assert "potato" in body_text.lower(), "Edit page should contain 'Potato' (recipe title)"
+    print(f"Recipe edit page loaded: {len(body)} bytes")
+
+
+@name("Check that recipe photo is served as PNG")
+def check_recipe_photo():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    # Just fetch first few bytes to check PNG magic bytes
+    photo_url = REMOTE_BASE_URL + "/recipe/2/photo"
+    try:
+        req = urllib.request.Request(photo_url)
+        req.add_header("Range", "bytes=0-7")  # Just get first 8 bytes
+        response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+        body = response.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            print("No photo for recipe 2, trying recipe 3...")
+            photo_url = REMOTE_BASE_URL + "/recipe/3/photo"
+            try:
+                req = urllib.request.Request(photo_url)
+                req.add_header("Range", "bytes=0-7")
+                response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+                body = response.read()
+            except urllib.error.HTTPError as e2:
+                if e2.code == 404:
+                    print("No photos found, skipping PNG check")
+                    return
+                raise
+        else:
+            raise
+    
+    assert is_png(body), "Recipe photo should be a PNG file"
+    print(f"Recipe photo starts with PNG magic bytes")
+
+
+@name("Check that photo upload works")
+def check_photo_upload():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    # Need to log in first (each test is a separate process)
+    do_remote_login("c", "c")
+    
+    # Get the edit page to find the CSRF token and form structure
+    response, body = try_remote_url(REMOTE_BASE_URL, "/recipe/2/edit")
+    if not response:
+        response, body = try_remote_url(REMOTE_BASE_URL, "/recipe/2/edit/")
+    assert response, "Failed to fetch edit page for upload"
+    
+    body_text = body.decode('latin1')
+    
+    # Find CSRF token
+    csrf_match = re.search(r'name=["\']csrfmiddlewaretoken["\'] value=["\']([^"\']+)["\']', body_text)
+    if not csrf_match:
+        csrf_match = re.search(r'value=["\']([^"\']+)["\'] name=["\']csrfmiddlewaretoken["\']', body_text)
+    assert csrf_match, "Could not find CSRF token"
+    csrf_token = csrf_match.group(1)
+    print(f"Found CSRF token: {csrf_token[:20]}...")
+    
+    # Create a minimal PNG for upload
+    png_data = create_minimal_png()
+    
+    # Build multipart form data
+    boundary = "----WebKitFormBoundary" + "x" * 16
+    
+    # We need to include all required form fields. Let's parse them.
+    parser = HTMLFindFormInput("post", "/recipe/2/edit")
+    parser.feed(body_text)
+    
+    parts = []
+    
+    # Add CSRF token
+    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="csrfmiddlewaretoken"\r\n\r\n{csrf_token}')
+    
+    # Add other form fields with their current/default values
+    for iput in parser.found:
+        if "name" not in iput:
+            continue
+        name = iput["name"]
+        if name == "csrfmiddlewaretoken":
+            continue
+        value = iput.get("value", "")
+        # For the photo field, we'll add it separately
+        if iput.get("type") == "file":
+            continue
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}')
+    
+    # Add the photo file
+    # Find the file input name
+    file_input_name = "photo"  # default guess
+    for iput in parser.found:
+        if iput.get("type") == "file" and "name" in iput:
+            file_input_name = iput["name"]
+            break
+    
+    parts.append(
+        f'--{boundary}\r\n'
+        f'Content-Disposition: form-data; name="{file_input_name}"; filename="test.png"\r\n'
+        f'Content-Type: image/png\r\n\r\n'
+    )
+    
+    # Combine parts
+    body_parts = "\r\n".join(parts).encode('utf8')
+    body_parts += png_data
+    body_parts += f'\r\n--{boundary}--\r\n'.encode('utf8')
+    
+    # Submit the form
+    edit_url = REMOTE_BASE_URL + "/recipe/2/edit"
+    if parser.action:
+        edit_url = REMOTE_BASE_URL + parser.action
+    
+    headers = {
+        "Content-Type": f"multipart/form-data; boundary={boundary}"
+    }
+    
+    req = urllib.request.Request(edit_url, data=body_parts, headers=headers, method="POST")
+    try:
+        response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+        print(f"Upload response: {response.status}")
+    except urllib.error.HTTPError as e:
+        if 300 <= e.code < 400:
+            print(f"Upload redirected (success): {e.headers.get('Location', 'unknown')}")
+        else:
+            print(f"Upload failed: {e.code} {e.reason}")
+            raise
+    
+    # Verify the photo was uploaded by fetching it and comparing exact bytes
+    response, body = try_remote_url(REMOTE_BASE_URL, "/recipe/2/photo")
+    if not response:
+        response, body = try_remote_url(REMOTE_BASE_URL, "/recipe/2/photo/")
+    
+    assert response, "Could not fetch uploaded photo"
+    assert response.status == 200, f"Could not fetch uploaded photo: {response.status}"
+    assert body == png_data, f"Uploaded photo doesn't match: expected {len(png_data)} bytes, got {len(body)} bytes"
+    print(f"Photo upload verified: uploaded and retrieved {len(body)} bytes match exactly")
+
+
+# =============================================================================
+# HW7 Phase 5 Tests
+# =============================================================================
+
+@name("Check that domain has A record matching IP")
+def check_dns_a_record():
+    import dns.resolver
+    domain, ip = get_domain_file_contents()
+    assert domain, "No domain in DOMAIN.md"
+    assert ip, "No IP in DOMAIN.md"
+    
+    print(f"Looking up A record for {domain}...")
+    try:
+        answers = dns.resolver.resolve(domain, "A")
+    except Exception as e:
+        assert False, f"Could not resolve A record for {domain}: {e}"
+    
+    found_ips = []
+    matched = False
+    for rdata in answers:
+        found_ip = str(rdata)
+        found_ips.append(found_ip)
+        print(f"  Found A record: {found_ip}")
+        if found_ip == ip:
+            matched = True
+            print(f"  Matches IP from DOMAIN.md!")
+    
+    assert matched, f"A record IPs {found_ips} do not match DOMAIN.md IP {ip}"
+
+
+@name("Check that HTTPS works")
+def check_https_works():
+    domain, ip = get_domain_file_contents()
+    assert domain, "No domain in DOMAIN.md"
+    
+    # Create a strict SSL context that validates certificates
+    strict_ctx = ssl.create_default_context()
+    strict_opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(REMOTE_COOKIE_JAR),
+        urllib.request.HTTPSHandler(context=strict_ctx)
+    )
+    
+    url = f"https://{domain}/"
+    print(f"Testing HTTPS with certificate validation: {url}")
+    
+    try:
+        response = strict_opener.open(url, timeout=REMOTE_TIMEOUT)
+        print(f"HTTPS works with valid certificate!")
+        print(f"Response: {response.status}")
+    except ssl.SSLCertVerificationError as e:
+        assert False, f"HTTPS certificate validation failed: {e}"
+    except Exception as e:
+        assert False, f"HTTPS connection failed: {e}"
+
+
+@name("Check that invalid page returns plain 404 (production mode)")
+def check_production_404():
+    global REMOTE_BASE_URL
+    domain, ip = get_domain_file_contents()
+    if not REMOTE_BASE_URL:
+        REMOTE_BASE_URL = determine_base_url(domain, ip)
+    assert REMOTE_BASE_URL, "Could not determine base URL"
+    
+    url = REMOTE_BASE_URL + "/thispageshouldnotexist12345/"
+    print(f"Fetching non-existent page: {url}")
+    
+    try:
+        req = urllib.request.Request(url)
+        response = REMOTE_OPENER.open(req, timeout=REMOTE_TIMEOUT)
+        assert False, f"Expected 404, got {response.status}"
+    except urllib.error.HTTPError as e:
+        assert e.code == 404, f"Expected 404, got {e.code}"
+        body = e.read().decode('latin1')
+        print(f"Got 404 response: {len(body)} bytes")
+        
+        # Check it's NOT the Django debug page
+        assert "Traceback" not in body, "404 page contains 'Traceback' - debug mode is on!"
+        assert "DEBUG" not in body or "DEBUG = True" not in body, "404 page mentions DEBUG - debug mode is on!"
+        assert "Request Method:" not in body, "404 page looks like Django debug page"
+        
+        # Should be a simple/minimal page
+        if len(body) > 5000:
+            print(f"WARNING: 404 page is quite large ({len(body)} bytes), might be debug page")
+        
+        print("404 page looks like production mode (no debug info)")
+
+
 def any_whitespace(s):
     return re.compile(re.escape(s).replace(r"\ ", r"\s*"))
 
@@ -521,9 +1154,47 @@ HW6 = [
     check_has_js("/s", "/static/main.js"),
 ]
 
+# =============================================================================
+# HW7 Combined Tests (to fit within 10 test limit)
+# =============================================================================
+
+@name("Phase 2: Check IP address and machine reachability")
+def check_phase2_combined():
+    check_domain_has_ip()
+    check_machine_reachable()
+
+@name("Phase 3: Check NGINX and static files")
+def check_phase3_combined():
+    check_nginx_response()
+    check_static_files()
+
+@name("Phase 4: Check recipe photo display and upload")
+def check_phase4_photo_combined():
+    check_recipe_photo()
+    check_photo_upload()
+
+@name("Phase 5: Check DNS A record and HTTPS")
+def check_phase5_dns_https():
+    check_dns_a_record()
+    check_https_works()
+
+
 HW7 = [
-    check_dns_file,
-    check_dns_txt_record,
+    # Phase 1 (10 pts)
+    check_dns_file,              # 5 pts
+    check_dns_txt_record,        # 5 pts
+    # Phase 2 (30 pts)
+    check_phase2_combined,       # 30 pts (ip + reachable)
+    # Phase 3 (15 pts)
+    check_phase3_combined,       # 15 pts (nginx + static)
+    # Phase 4 (15 pts)
+    check_homepage,              # 3 pts
+    check_login_works,           # 4 pts
+    check_recipe_edit,           # 3 pts
+    check_phase4_photo_combined, # 5 pts (photo display + upload)
+    # Phase 5 (25 pts)
+    check_phase5_dns_https,      # 17 pts (dns a record + https)
+    check_production_404,        # 8 pts
 ]
 
 HWS = {
