@@ -801,8 +801,10 @@ def check_login_works():
     print(f"Logging in with {username_field}=c, {password_field}=c")
     data = urllib.parse.urlencode(login_data).encode("utf8")
     
+    # Use the form's action URL (with trailing slash) to avoid POST->GET redirect
+    post_url = REMOTE_BASE_URL + parser.action
     try:
-        response = REMOTE_OPENER.open(login_url, data, timeout=REMOTE_TIMEOUT)
+        response = REMOTE_OPENER.open(post_url, data, timeout=REMOTE_TIMEOUT)
     except urllib.error.HTTPError as e:
         if 300 <= e.code < 400:
             print(f"Login redirected to {e.headers.get('Location', 'unknown')}")
